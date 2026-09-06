@@ -43,7 +43,7 @@ node --version
 
 **Opção B (com git):**
 ```powershell
-git clone <URL-DO-SEU-REPOSITORIO>.git
+git clone https://github.com/HenriqueScian1/3ds-music-player.git
 ```
 
 ### Passo 2 — Instalar as dependências
