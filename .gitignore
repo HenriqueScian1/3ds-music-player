@@ -1,0 +1,17 @@
+# Dependências e builds
+node_modules/
+dist/
+*.log
+
+# Músicas do usuário: NÃO versionar os áudios (podem ser pessoais/protegidos e grandes).
+# Só o aviso da pasta é versionado, para a pasta existir depois de clonar.
+/music/*
+!/music/LEIA-ME.md
+
+# Config e estado local (o app salva em %APPDATA%, isto é só por segurança)
+config.json
+
+# Sistema operacional / editores
+Thumbs.db
+.DS_Store
+.vscode/

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3DS Music Player</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- fundo com bolhas animadas estilo tema padrao do 3DS -->
+  <div class="bg-bubbles" aria-hidden="true">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+  </div>
+
+  <div id="app">
+    <!-- Barra de status superior (como o topo do 3DS) -->
+    <header class="statusbar">
+      <div class="sb-left">
+        <span class="home-icon">♪</span>
+        <span class="app-name">Reprodutor de M&uacute;sica</span>
+      </div>
+      <div class="sb-center">
+        <input id="search" type="text" placeholder="Buscar m&uacute;sica, artista, &aacute;lbum..." autocomplete="off" />
+      </div>
+      <div class="sb-right">
+        <span id="clock" class="clock">--:--</span>
+        <span id="date" class="date"></span>
+      </div>
+    </header>
+
+    <!-- "Tela de cima" do 3DS: preview / tocando agora -->
+    <section class="top-screen">
+      <div class="np-cover-wrap">
+        <div id="npCover" class="np-cover placeholder"><span>&#9835;</span></div>
+        <div class="disc-glow"></div>
+      </div>
+      <div class="np-info">
+        <div id="npTitle" class="np-title">Nada tocando</div>
+        <div id="npArtist" class="np-artist">Escolha uma pasta para come&ccedil;ar</div>
+        <div id="npAlbum" class="np-album"></div>
+
+        <div class="progress-row">
+          <span id="curTime" class="time">0:00</span>
+          <div id="progress" class="progress"><div id="progressFill" class="fill"></div><div id="progressKnob" class="knob"></div></div>
+          <span id="durTime" class="time">0:00</span>
+        </div>
+
+        <div class="controls">
+          <button id="shuffleBtn" class="ctrl small" title="Aleat&oacute;rio">&#128256;</button>
+          <button id="prevBtn" class="ctrl" title="Anterior">&#9198;</button>
+          <button id="playBtn" class="ctrl play" title="Tocar / Pausar">&#9654;</button>
+          <button id="nextBtn" class="ctrl" title="Pr&oacute;xima">&#9197;</button>
+          <button id="repeatBtn" class="ctrl small" title="Repetir">&#128257;</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Abas (estilo pastas do 3DS) -->
+    <nav class="tabbar">
+      <button id="tabLib" class="tab active">&#9835; Biblioteca</button>
+      <button id="tabPl" class="tab">&#9776; Playlists</button>
+      <button id="tabDl" class="tab">&#11015; Baixar</button>
+    </nav>
+
+    <!-- "Tela de baixo" do 3DS -->
+    <section class="bottom-screen">
+      <!-- View: biblioteca -->
+      <div id="viewLib" class="view lib-view">
+        <div id="genreBar" class="genre-bar"></div>
+        <div id="grid" class="grid" tabindex="0"></div>
+        <div id="empty" class="empty">
+          <div class="empty-note">&#9835;</div>
+          <p>Nenhuma m&uacute;sica ainda.<br>Coloque seus arquivos na pasta <b>music</b> do app (ou baixe pela aba <b>Baixar</b>),<br>depois clique em Recarregar.</p>
+          <div class="empty-actions">
+            <button id="emptyReload" class="big-btn">&#128260; Recarregar</button>
+            <button id="emptyChoose" class="big-btn ghost">Escolher outra pasta</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- View: playlists -->
+      <div id="viewPl" class="view pl-view" hidden>
+        <aside class="pl-sidebar">
+          <div class="pl-side-head">
+            <span>Suas playlists</span>
+            <button id="plNew" class="tool-btn">&#43; Nova</button>
+          </div>
+          <div id="plList" class="pl-list"></div>
+        </aside>
+        <div class="pl-main">
+          <div id="plEmpty" class="pl-empty">
+            <div class="empty-note">&#9776;</div>
+            <p>Crie uma playlist e adicione m&uacute;sicas pela Biblioteca<br>(clique com o bot&atilde;o direito numa m&uacute;sica).</p>
+          </div>
+          <div id="plDetail" class="pl-detail" hidden>
+            <div class="pl-detail-head">
+              <div class="pl-detail-title" id="plTitle"></div>
+              <div class="pl-detail-actions">
+                <button id="plPlay" class="tool-btn">&#9654; Tocar</button>
+                <button id="plRename" class="tool-btn">Renomear</button>
+                <button id="plDelete" class="tool-btn">Excluir</button>
+              </div>
+            </div>
+            <div id="plSongs" class="pl-songs"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View: baixar -->
+      <div id="viewDl" class="view dl-view" hidden>
+        <div class="dl-head">
+          <div>
+            <div class="dl-title">Baixar m&uacute;sicas</div>
+            <div class="dl-sub">Cole links do <b>YouTube</b> ou <b>Spotify</b> &mdash; um por linha</div>
+          </div>
+          <div class="dl-dest">
+            <span class="dl-dest-label">Destino:</span>
+            <span id="dlFolder" class="dl-dest-path">&mdash;</span>
+            <button id="dlChooseFolder" class="tool-btn">Trocar pasta</button>
+          </div>
+        </div>
+
+        <textarea id="dlLinks" class="dl-links" spellcheck="false"
+          placeholder="https://open.spotify.com/track/...&#10;https://youtu.be/...&#10;https://open.spotify.com/playlist/..."></textarea>
+
+        <div class="dl-controls">
+          <label class="dl-q">Qualidade:
+            <select id="dlQuality">
+              <option value="320">MP3 320 kbps (melhor)</option>
+              <option value="256">MP3 256 kbps</option>
+              <option value="192">MP3 192 kbps</option>
+              <option value="128">MP3 128 kbps</option>
+            </select>
+          </label>
+          <button id="dlStart" class="big-btn">&#11015; Baixar</button>
+          <span id="dlToolStatus" class="dl-toolstatus"></span>
+        </div>
+
+        <div id="dlLog" class="dl-log"></div>
+      </div>
+    </section>
+
+    <!-- Barra de ferramentas inferior -->
+    <footer class="toolbar">
+      <button id="chooseFolder" class="tool-btn">&#128193; Pasta</button>
+      <button id="reloadFolder" class="tool-btn" title="Recarregar a pasta atual">&#128260;</button>
+      <span id="folderPath" class="folder-path"></span>
+      <span class="spacer"></span>
+      <span id="status" class="status"></span>
+      <div class="vol">
+        <span class="vol-icon">&#128266;</span>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.9" />
+      </div>
+      <button id="sfxToggle" class="tool-btn">Sons: ON</button>
+    </footer>
+  </div>
+
+  <!-- Menu de contexto (clique direito numa musica) -->
+  <div id="ctxMenu" class="ctx-menu" hidden></div>
+
+  <!-- Modal generico (entrada de texto / escolha) -->
+  <div id="modalOverlay" class="modal-overlay" hidden>
+    <div class="modal" id="modalBox"></div>
+  </div>
+
+  <audio id="audio"></audio>
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{
+  "name": "local-music-player-3ds",
+  "version": "1.0.0",
+  "description": "Reprodutor de musica local com visual inspirado no Home Menu do Nintendo 3DS",
+  "main": "main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "music-metadata": "^10.6.0"
+  },
+  "build": {
+    "appId": "com.local.musicplayer3ds",
+    "productName": "3DS Music Player",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/music-metadata/**",
+      "node_modules/**/*.node"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "3DS Music Player"
+    },
+    "portable": {
+      "artifactName": "3DS-Music-Player-Portable-${version}.exe"
+    }
+  }
+}
