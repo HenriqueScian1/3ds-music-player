@@ -12,6 +12,7 @@ relógio, e um cursor de seleção brilhante. Feito com [Electron](https://www.e
 - 🏷️ **Filtro por gênero** e categorização manual (clique direito → "Definir gênero")
 - 🗂️ **Playlists** — crie, edite e toque suas próprias listas
 - ⬇️ Aba **Baixar** — cole links do **YouTube** ou **Spotify** e baixe em MP3 (opcional, requer ferramentas extras)
+- 🎮 Aba **Jogos** — um HUB que lê sua pasta de jogos e abre o executável com um clique
 - 🔀 Aleatório, repetir, busca, volume e sons de navegação estilo 3DS
 
 ---
@@ -108,6 +109,22 @@ para a sua pasta de músicas, com capa e tags.
 > responsabilidade pelo uso é sua.
 
 ---
+
+## 🎮 Aba "Jogos" — HUB de jogos
+
+Uma aba para abrir seus jogos com um clique, sem sair do app.
+
+- Aponte para a sua **pasta de jogos** (botão **📁 Trocar**). O padrão é uma pasta `games` dentro do app.
+- O HUB reconhece dois formatos:
+  - **Executáveis soltos** (`.exe` ou atalhos `.lnk`) direto na pasta.
+  - **Jogos em subpastas** — ele acha o executável principal automaticamente, ignorando
+    instaladores, `unins000.exe`, `vcredist`, pastas de redistribuíveis (`_CommonRedist`) etc.
+- Cada jogo vira um card com o **ícone real** do executável. **Clique** para abrir.
+- **Clique direito** num jogo para: escolher o executável manualmente (quando a heurística errar),
+  renomear, abrir a pasta do jogo, ou ocultar da lista.
+
+> As preferências de jogos (executável escolhido, nome, ocultos) ficam salvas em `config.json`,
+> no seu PC. O HUB só **abre** os executáveis que já estão na sua máquina — nada é enviado a lugar nenhum.
 
 ## ⌨️ Atalhos de teclado
 

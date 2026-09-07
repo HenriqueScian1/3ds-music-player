@@ -60,6 +60,7 @@
     <nav class="tabbar">
       <button id="tabLib" class="tab active">&#9835; Biblioteca</button>
       <button id="tabPl" class="tab">&#9776; Playlists</button>
+      <button id="tabGames" class="tab">&#127918; Jogos</button>
       <button id="tabDl" class="tab">&#11015; Baixar</button>
     </nav>
 
@@ -103,6 +104,25 @@
               </div>
             </div>
             <div id="plSongs" class="pl-songs"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View: jogos -->
+      <div id="viewGames" class="view lib-view" hidden>
+        <div class="games-bar">
+          <span class="games-bar-label">Pasta de jogos:</span>
+          <span id="gamesFolderLabel" class="games-folder">&mdash;</span>
+          <button id="gamesChoose" class="tool-btn">&#128193; Trocar</button>
+          <button id="gamesReload" class="tool-btn" title="Recarregar">&#128260;</button>
+        </div>
+        <div id="gamesGrid" class="grid"></div>
+        <div id="gamesEmpty" class="empty">
+          <div class="empty-note">&#127918;</div>
+          <p>Nenhum jogo encontrado.<br>Coloque os jogos (executáveis <b>.exe</b>/<b>.lnk</b> ou pastas de jogos) na pasta,<br>ou aponte para a sua pasta de jogos.</p>
+          <div class="empty-actions">
+            <button id="gamesEmptyReload" class="big-btn">&#128260; Recarregar</button>
+            <button id="gamesEmptyChoose" class="big-btn ghost">Escolher pasta de jogos</button>
           </div>
         </div>
       </div>

@@ -329,6 +329,21 @@ body {
 }
 .empty-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
+/* ---- Hub de jogos ---- */
+.games-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px 4px; flex-wrap: wrap; }
+.games-bar-label { font-size: 12px; color: var(--ink-soft); }
+.games-folder {
+  flex: 1; min-width: 120px; font-size: 12px; font-weight: bold; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left;
+}
+.card.game .thumb {
+  background-size: 60px 60px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: #eef7fc;
+  font-size: 40px;
+}
+
 /* ---- Painel de download ---- */
 .dl-view { display: flex; flex-direction: column; padding: 16px; gap: 12px; }
 .dl-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

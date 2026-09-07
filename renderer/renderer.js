@@ -16,6 +16,10 @@ let selectedGenre = null;    // genero selecionado na barra (null = todos)
 let playlists = [];          // [{ id, name, paths: [] }]
 let genreOverrides = {};     // { caminhoDoArquivo: genero }
 let activePlaylistId = null; // playlist aberta na aba Playlists
+let games = [];              // jogos encontrados na pasta de jogos
+let gamesFolder = null;      // pasta de jogos atual
+let gamesLoaded = false;     // se ja escaneamos a pasta de jogos
+let gameOverrides = {};      // { caminho: { name?, exe?, hidden? } }
 
 const audio = document.getElementById('audio');
 
@@ -463,6 +467,8 @@ async function init() {
   if (cfg.sfx === false) { sfxOn = false; $('sfxToggle').textContent = 'Sons: OFF'; }
   if (Array.isArray(cfg.playlists)) playlists = cfg.playlists;
   if (cfg.genreOverrides && typeof cfg.genreOverrides === 'object') genreOverrides = cfg.genreOverrides;
+  if (cfg.gameOverrides && typeof cfg.gameOverrides === 'object') gameOverrides = cfg.gameOverrides;
+  gamesFolder = cfg.gamesFolder || await window.api.getDefaultGamesFolder();
   renderPlaylistList();
   // pasta padrao = subpasta "music" do proprio app (a menos que o usuario tenha escolhido outra)
   const folder = cfg.folder || await window.api.getDefaultFolder();
@@ -477,17 +483,21 @@ async function init() {
 // ============================================================
 const tabLib = $('tabLib');
 const tabPl = $('tabPl');
+const tabGames = $('tabGames');
 const tabDl = $('tabDl');
 const viewLib = $('viewLib');
 const viewPl = $('viewPl');
+const viewGames = $('viewGames');
 const viewDl = $('viewDl');
 
 function switchTab(which) {
   tabLib.classList.toggle('active', which === 'lib');
   tabPl.classList.toggle('active', which === 'pl');
+  tabGames.classList.toggle('active', which === 'games');
   tabDl.classList.toggle('active', which === 'dl');
   viewLib.hidden = which !== 'lib';
   viewPl.hidden = which !== 'pl';
+  viewGames.hidden = which !== 'games';
   viewDl.hidden = which !== 'dl';
   sfxSelect();
   if (which === 'dl') refreshTools();
@@ -495,9 +505,11 @@ function switchTab(which) {
     renderPlaylistList();
     if (!activePlaylistId && playlists.length) openPlaylist(playlists[0].id);
   }
+  if (which === 'games' && !gamesLoaded) loadGames(gamesFolder);
 }
 tabLib.addEventListener('click', () => switchTab('lib'));
 tabPl.addEventListener('click', () => switchTab('pl'));
+tabGames.addEventListener('click', () => switchTab('games'));
 tabDl.addEventListener('click', () => switchTab('dl'));
 
 // ============================================================
@@ -875,5 +887,91 @@ function modalGenre({ current, suggestions }) {
     setTimeout(() => inp.focus(), 30);
   });
 }
+
+// ============================================================
+//  Jogos (hub de executáveis)
+// ============================================================
+const gamesGrid = $('gamesGrid');
+const gamesEmpty = $('gamesEmpty');
+
+async function loadGames(folder) {
+  gamesFolder = folder;
+  gamesLoaded = true;
+  $('gamesFolderLabel').textContent = folder || '(nenhuma)';
+  gamesGrid.innerHTML = '<div style="padding:16px;color:var(--ink-soft);font-size:13px">Procurando jogos…</div>';
+  gamesEmpty.style.display = 'none';
+  let list = [];
+  try { list = await window.api.scanGames(folder); } catch { list = []; }
+  games = list;
+  renderGames();
+}
+
+function renderGames() {
+  gamesEmpty.style.display = games.length ? 'none' : 'flex';
+  gamesGrid.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  games.forEach((g) => {
+    const card = document.createElement('div');
+    card.className = 'card game';
+    card.title = g.exe;
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    if (g.icon) thumb.style.backgroundImage = `url("${g.icon}")`;
+    else thumb.textContent = '🎮';
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = g.name;
+    card.append(thumb, label);
+    card.addEventListener('click', () => launchGame(g));
+    card.addEventListener('contextmenu', (e) => { e.preventDefault(); openGameMenu(e.clientX, e.clientY, g); });
+    frag.appendChild(card);
+  });
+  gamesGrid.appendChild(frag);
+}
+
+async function launchGame(g) {
+  sfxSelect();
+  statusEl.textContent = 'Abrindo ' + g.name + '…';
+  const res = await window.api.launchGame(g.exe);
+  statusEl.textContent = (res && res.ok) ? '▶ ' + g.name : 'Erro ao abrir: ' + ((res && res.error) || 'desconhecido');
+}
+
+function persistGameOverrides() { window.api.saveConfig({ gameOverrides }); }
+function setGameOverride(id, patch) {
+  gameOverrides[id] = { ...(gameOverrides[id] || {}), ...patch };
+  persistGameOverrides();
+}
+
+function openGameMenu(x, y, g) {
+  ctxMenu.innerHTML = '';
+  ctxMenu.appendChild(ctxItem('▶  Abrir', () => launchGame(g)));
+  ctxMenu.appendChild(ctxItem('📂  Abrir pasta do jogo', () => window.api.showInFolder(g.exe)));
+  ctxMenu.appendChild(ctxItem('🎯  Escolher executável…', async () => {
+    const start = g.kind === 'folder' ? g.id : g.exe;
+    const exe = await window.api.pickExe(start);
+    if (exe) { setGameOverride(g.id, { exe }); loadGames(gamesFolder); }
+  }));
+  ctxMenu.appendChild(ctxItem('✏️  Renomear…', async () => {
+    const name = await modalInput({ title: 'Renomear jogo', value: g.name });
+    if (name) { setGameOverride(g.id, { name: name.trim() }); loadGames(gamesFolder); }
+  }));
+  const sep = document.createElement('div'); sep.className = 'ctx-sep'; ctxMenu.appendChild(sep);
+  ctxMenu.appendChild(ctxItem('🚫  Ocultar da lista', () => { setGameOverride(g.id, { hidden: true }); loadGames(gamesFolder); }, 'danger'));
+  ctxMenu.hidden = false;
+  const mw = 220;
+  const mh = ctxMenu.offsetHeight || 220;
+  ctxMenu.style.left = Math.min(x, window.innerWidth - mw - 8) + 'px';
+  ctxMenu.style.top = Math.min(y, window.innerHeight - mh - 8) + 'px';
+}
+
+const chooseGamesFolder = async () => {
+  const folder = await window.api.pickGamesFolder();
+  if (folder) loadGames(folder);
+};
+$('gamesChoose').addEventListener('click', chooseGamesFolder);
+$('gamesEmptyChoose').addEventListener('click', chooseGamesFolder);
+const reloadGames = () => { if (gamesFolder) { loadGames(gamesFolder); sfxSelect(); } };
+$('gamesReload').addEventListener('click', reloadGames);
+$('gamesEmptyReload').addEventListener('click', reloadGames);
 
 init();

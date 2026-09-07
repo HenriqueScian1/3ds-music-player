@@ -11,6 +11,12 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('track-found', handler);
     return () => ipcRenderer.removeListener('track-found', handler);
   },
+  getDefaultGamesFolder: () => ipcRenderer.invoke('default-games-folder'),
+  pickGamesFolder: () => ipcRenderer.invoke('pick-games-folder'),
+  pickExe: (defaultPath) => ipcRenderer.invoke('pick-exe', defaultPath),
+  showInFolder: (p) => ipcRenderer.invoke('show-in-folder', p),
+  scanGames: (dir) => ipcRenderer.invoke('scan-games', dir),
+  launchGame: (exe) => ipcRenderer.invoke('launch-game', exe),
   getTools: () => ipcRenderer.invoke('get-tools'),
   download: (payload) => ipcRenderer.invoke('download', payload),
   onDlLog: (cb) => {

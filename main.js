@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, net, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -300,4 +300,142 @@ ipcMain.handle('download', async (event, payload) => {
   }
   send('alldone', { okCount, total: list.length });
   return { ok: true, okCount, total: list.length };
+});
+
+// ============================================================
+//  HUB DE JOGOS (lança executáveis .exe / atalhos .lnk)
+// ============================================================
+
+function defaultGamesDir() {
+  const base = app.isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath();
+  return path.join(base, 'games');
+}
+
+ipcMain.handle('default-games-folder', () => {
+  const d = defaultGamesDir();
+  try { fs.mkdirSync(d, { recursive: true }); } catch {}
+  return d;
+});
+
+ipcMain.handle('pick-games-folder', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+  if (res.canceled || !res.filePaths.length) return null;
+  const folder = res.filePaths[0];
+  const cur = readConfig();
+  writeConfig({ ...cur, gamesFolder: folder });
+  return folder;
+});
+
+ipcMain.handle('pick-exe', async (e, defaultPath) => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    defaultPath: defaultPath || undefined,
+    filters: [{ name: 'Executáveis', extensions: ['exe', 'lnk', 'bat', 'cmd'] }, { name: 'Todos', extensions: ['*'] }]
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+  return res.filePaths[0];
+});
+
+ipcMain.handle('show-in-folder', (e, p) => {
+  try { if (p && fs.existsSync(p)) shell.showItemInFolder(p); } catch {}
+});
+
+// nomes de .exe que quase nunca são "o jogo" (instaladores, uninstall, redistribuíveis...)
+const EXE_SKIP = /(^|[ _-])(unins|uninstall|setup|install|vc_?redist|vcredist|dxsetup|dxwebsetup|oalinst|dotnet|crashpad|crashhandler|crashreport|werfault|notification|activation|touchup|updater|update|patch|cleanup|config|settings|benchmark|editor|server|dedicated)/i;
+// subpastas que costumam guardar redistribuíveis, não o jogo
+const JUNK_DIR = /^(_?redist|_?commonredist|redist|directx|dotnet|dotnetfx|vcredist|support|drivers|__installer|installers?|dlc|tools|extras?|soundtrack|ost|manual)$/i;
+
+const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+async function findExes(dir, depth, out) {
+  if (depth > 2 || out.length > 400) return;
+  let entries;
+  try { entries = await fs.promises.readdir(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (JUNK_DIR.test(e.name) || e.name.startsWith('.')) continue;
+      await findExes(full, depth + 1, out);
+    } else if (e.isFile() && e.name.toLowerCase().endsWith('.exe')) {
+      let size = 0;
+      try { size = (await fs.promises.stat(full)).size; } catch {}
+      out.push({ path: full, name: e.name, depth, size });
+    }
+  }
+}
+
+function pickMainExe(folderName, exes) {
+  if (!exes.length) return null;
+  const good = exes.filter((x) => !EXE_SKIP.test(path.basename(x.name, '.exe')));
+  const pool = good.length ? good : exes;
+  const fn = norm(folderName);
+  let best = null;
+  let bestScore = -Infinity;
+  for (const x of pool) {
+    const base = norm(path.basename(x.name, '.exe'));
+    let score = 0;
+    if (base === fn) score += 1000;
+    else if (fn && (base.includes(fn) || fn.includes(base))) score += 400;
+    score += Math.min(x.size / (1024 * 1024), 300); // arquivos maiores tendem a ser o jogo
+    score -= x.depth * 150;                          // preferir a raiz da pasta do jogo
+    if (score > bestScore) { bestScore = score; best = x; }
+  }
+  return best ? best.path : null;
+}
+
+async function iconFor(exe) {
+  try {
+    const img = await app.getFileIcon(exe, { size: 'large' });
+    return img && !img.isEmpty() ? img.toDataURL() : null;
+  } catch { return null; }
+}
+
+async function scanGamesDir(dir) {
+  const overrides = readConfig().gameOverrides || {};
+  const games = [];
+  let entries;
+  try { entries = await fs.promises.readdir(dir, { withFileTypes: true }); } catch { return games; }
+
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    const ov = overrides[full] || {};
+    if (ov.hidden) continue;
+    if (e.isDirectory()) {
+      if (e.name.startsWith('.')) continue;
+      const exes = [];
+      await findExes(full, 0, exes);
+      const exe = (ov.exe && fs.existsSync(ov.exe)) ? ov.exe : pickMainExe(e.name, exes);
+      if (!exe) continue; // pasta sem executável jogável
+      games.push({ id: full, kind: 'folder', name: ov.name || e.name, exe, exeCount: exes.length });
+    } else if (e.isFile()) {
+      const lower = e.name.toLowerCase();
+      if (lower.endsWith('.exe')) {
+        games.push({ id: full, kind: 'exe', name: ov.name || path.basename(e.name, '.exe'), exe: full });
+      } else if (lower.endsWith('.lnk')) {
+        games.push({ id: full, kind: 'lnk', name: ov.name || path.basename(e.name, '.lnk'), exe: full });
+      }
+    }
+  }
+
+  for (const g of games) g.icon = await iconFor(g.exe);
+  games.sort((a, b) => a.name.localeCompare(b.name));
+  return games;
+}
+
+ipcMain.handle('scan-games', (event, dir) => scanGamesDir(dir));
+
+ipcMain.handle('launch-game', async (event, exe) => {
+  try {
+    if (!exe || !fs.existsSync(exe)) return { ok: false, error: 'Arquivo não encontrado.' };
+    if (/\.(lnk|url)$/i.test(exe)) {
+      const err = await shell.openPath(exe);
+      return err ? { ok: false, error: err } : { ok: true };
+    }
+    const child = spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' });
+    child.on('error', () => {});
+    child.unref();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 });

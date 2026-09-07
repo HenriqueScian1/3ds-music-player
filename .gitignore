@@ -8,6 +8,10 @@ dist/
 /music/*
 !/music/LEIA-ME.md
 
+# Jogos do usuário: NÃO versionar executáveis/pastas de jogos.
+/games/*
+!/games/LEIA-ME.md
+
 # Config e estado local (o app salva em %APPDATA%, isto é só por segurança)
 config.json
 
